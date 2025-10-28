@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌾 Project Samarth: Intelligent Q&A System</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f6f8fa;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      color: #0b3d91;
+      margin-top: 40px;
+    }
+    .container {
+      background: white;
+      width: 60%;
+      margin: 40px auto;
+      padding: 20px 40px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    input {
+      width: 80%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #0078d4;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+    button:hover {
+      background-color: #005fa3;
+    }
+    #response {
+      margin-top: 20px;
+      padding: 15px;
+      border-left: 4px solid #0078d4;
+      background-color: #f9f9f9;
+      text-align: left;
+      white-space: pre-wrap;
+      border-radius: 5px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f1f1f1;
+    }
+    .sources {
+      font-size: 14px;
+      margin-top: 10px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🌾 Project Samarth: Intelligent Q&A System</h1>
+
+  <div class="container">
+    <input type="text" id="question" placeholder="Ask a question (e.g., Top crops in India)">
+    <button id="askBtn">Ask</button>
+    <div id="response">Response will appear here...</div>
+  </div>
+
+  <footer>
+    <p>Powered by <strong>data.gov.in</strong> APIs | Built for <strong>GovTech Innovation</strong></p>
+  </footer>
+
+  <script>
+    document.getElementById("askBtn").addEventListener("click", async () => {
+      const question = document.getElementById("question").value.trim();
+      const responseBox = document.getElementById("response");
+
+      if (!question) {
+        responseBox.innerHTML = "❗ Please type a question.";
+        return;
+      }
+
+      responseBox.innerHTML = "⏳ Thinking...";
+
+      try {
+        const res = await fetch("http://127.0.0.1:5000/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+
+        if (!res.ok) {
+          throw new Error("Server error: " + res.status);
+        }
+
+        const data = await res.json();
+        let html = `<strong>${data.answer}</strong>`;
+
+        // Handle object data (like top crops or rainfall)
+        if (data.data && !Array.isArray(data.data)) {
+          html += `<br><br><table><tr><th>Parameter</th><th>Value</th></tr>`;
+          for (let [key, value] of Object.entries(data.data)) {
+            html += `<tr><td>${key}</td><td>${value}</td></tr>`;
+          }
+          html += "</table>";
+        }
+
+        // Handle array data (like correlation table)
+        else if (Array.isArray(data.data)) {
+          if (data.data.length > 0) {
+            const keys = Object.keys(data.data[0]);
+            html += `<br><br><table><tr>${keys.map(k => `<th>${k}</th>`).join("")}</tr>`;
+            data.data.forEach(row => {
+              html += `<tr>${keys.map(k => `<td>${row[k]}</td>`).join("")}</tr>`;
+            });
+            html += "</table>";
+          }
+        }
+
+        // Add sources if available
+        if (data.source) {
+          if (Array.isArray(data.source)) {
+            html += `<div class="sources"><br><strong>Data Sources:</strong><ul>`;
+            data.source.forEach(s => html += `<li>${s}</li>`);
+            html += `</ul></div>`;
+          } else {
+            html += `<div class="sources"><br><strong>Source:</strong> ${data.source}</div>`;
+          }
+        }
+
+        responseBox.innerHTML = html;
+
+      } catch (error) {
+        console.error("❌ Error:", error);
+        responseBox.innerHTML = "❌ Could not connect to Flask server. Check console or try again.";
+      }
+    });
+  </script>
+
+</body>
+</html>
